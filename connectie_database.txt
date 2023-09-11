@@ -1,0 +1,16 @@
+    server = '10.182.1.54'
+    database = 'Artklas6_PRD'
+    username = 'HAGEMEYER-NL\ksoochit'
+    password = 'rXl67238!'
+
+    connection_string = f"""Driver={{ODBC Driver 17 for SQL Server}};
+    Server=10.182.1.54;
+    Database=Artklas6_PRD;
+    Trusted_Cinnection=yes;"""
+
+    conn = pyodbc.connect('Driver={ODBC Driver 17 for SQL Server};Server=10.182.1.54;Database=Artklas6_PRD;Trusted_Connection=yes;')
+    connection_url = url.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+    engine = create_engine(connection_url,module=odbc)
+    return conn
+
+#conn = pyodbc.connect('Driver={ODBC Driver 17 for SQL Server};Server=10.182.1.54;Database=Artklas6_PRD;Trusted_Connection=yes;')

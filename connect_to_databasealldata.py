@@ -1,0 +1,84 @@
+import pyodbc
+import pypyodbc as odbc
+from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
+import pandas as pd
+
+
+#def query(file):
+#    engine = connect_to_database()
+#    sql= sql_statement(file)
+#    records = pd.read_sql_query(sql,engine)
+#    return records
+
+def connect_to_database_alldata(file):
+    connection_string = f"""Driver={{ODBC Driver 17 for SQL Server}};
+    Server=10.182.1.54;
+    Database=Artklas6_PRD;
+    Trusted_Connection=yes;"""
+
+
+    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+    engine = create_engine(connection_url,module=odbc)
+    
+    sql_statement = f"""SELECT 
+       [code]           = [AL].[bestelnummer leverancier],
+       [Merk] = A.[fabrikaat],
+       [Serie] = A.[Serie/programma],
+       [Type] = A.[Type],
+       [Artikelnummer fabrikant] = A.[Artikelnummer fabrikant],
+       [Class]            = [AK].[Dutch],
+       [orginele webtitel]   = [AL].[Art omschrijving leverancier],
+       [Etim value]     = [K].[EtimID],
+       [Waarde]            = [K].[Dutch],
+       [Kenmerkwaarde]  = CASE [S].Kenmerktype  COLLATE Latin1_General_CI_AS
+                               WHEN 'A' THEN
+                                        [W].Dutch COLLATE Latin1_General_CI_AS
+                               WHEN 'L' THEN
+                                        CASE WHEN ISNULL([S].[Kenmerkwaarde], '') = 'F' THEN 'Nee'
+                                             WHEN ISNULL([S].[Kenmerkwaarde], '') = 'T' THEN 'Ja'
+                                        END
+                          ELSE
+                                LTRIM(Convert(Varchar, ISNULL([S].[Kenmerkwaarde] , '')))
+                          END,
+       [Kenmerkwaarde Max] = [S].[Kenmerkwaarde-max],
+       [E].eenheid,       
+       [Technische omschrijving] = A.[Technische omschrijving],
+       [Chunck] = [AL].[_Chunk]
+FROM  ProductenPortal_Rexel_PRD.dbo.[Art_Lev] AS AL
+    INNER JOIN ProductenPortal_Rexel_PRD.dbo.[PPSpecs1] AS S
+        ON [AL].[Artikelnummer fabrikant] = [S].[Artikelnummer fabrikant]
+        AND [AL].[Relatiecode fabrikant]   =  [S].[Relatiecode fabrikant]
+        AND [S].[Bestelnummer leverancier] = AL.[Bestelnummer leverancier]
+    INNER JOIN ProductenPortal_Rexel_PRD.dbo.[Artikel] AS A
+        ON [AL].[Relatiecode fabrikant] = [A].[Relatiecode fabrikant]
+        AND  [AL].[Artikelnummer fabrikant] = [A].[Artikelnummer fabrikant]
+    INNER JOIN Artklas6_PRD.dbo.[Art_klas] AS [AK]
+        ON CAST([A].[UBIM_code] AS varchar) COLLATE Latin1_General_CI_AS = CAST([AK].[UBIM_code] AS varchar) COLLATE Latin1_General_CI_AS
+        AND CAST([A].UBIM_volgnummer AS varchar) COLLATE Latin1_General_CI_AS = CAST([AK].[UBIM_volgnummer] AS varchar) COLLATE Latin1_General_CI_AS
+    LEFT JOIN Artklas6_PRD.dbo.[Waarde] AS W
+        ON [S].[Kenmerkwaarde] COLLATE Latin1_General_CI_AS = Convert(varchar, [W].[Grenswaardecode])
+    INNER JOIN Artklas6_PRD.dbo.[Kenmerk] AS K
+        ON CAST([S].[Kenmerkcode] AS varchar) COLLATE Latin1_General_CI_AS = CAST([K].[Kenmerkcode] AS varchar) COLLATE Latin1_General_CI_AS
+    INNER JOIN Artklas6_PRD.dbo.[Ken_Zoek] AS KZ
+        ON CAST([A].[UBIM_Code] AS varchar) COLLATE Latin1_General_CI_AS = CAST([KZ].[UBIM_Code] AS varchar) COLLATE Latin1_General_CI_AS
+        AND  CAST([A].[UBIM_Volgnummer] AS varchar) COLLATE Latin1_General_CI_AS = CAST([KZ].[UBIM_Volgnummer] AS varchar) COLLATE Latin1_General_CI_AS
+        AND  CAST([S].[Kenmerkcode] AS varchar) COLLATE Latin1_General_CI_AS = CAST([KZ].[Kenmerkcode] AS varchar) COLLATE Latin1_General_CI_AS
+    LEFT JOIN Artklas6_PRD.dbo.Eenheid AS [E]
+        ON [KZ].eenheid = [E].eenheid  
+WHERE AL.[Relatiecode leverancier] = '100000' AND  AL._Etimcode= '{file}' AND AL._Webstore_Rexel = 1 order by code
+"""
+    
+    df = pd.read_sql_query(sql_statement,engine)
+    
+    df.to_excel(f"""{file}.xlsx""")
+    return df
+
+
+
+
+
+
+
+
+
